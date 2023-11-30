@@ -126,10 +126,10 @@ def gci(project_name, file):
         mysql_insert_data(df, 'material')
 
 
-def clean_output():
-    for file in os.listdir("test"):
+def clean_output(output_path):
+    for file in os.listdir(output_path):
         if ".xlsx" in file:
-            file_name = os.path.join("test", file)
+            file_name = os.path.join(output_path, file)
             df = pd.read_excel(file_name).fillna("")
             title = df.columns.tolist()
             for s in title:
@@ -142,6 +142,7 @@ def clean_output():
                     table = clean_data(table)
                     df = pd.DataFrame(data=table[1:], columns=table[0])
                     return df
+        os.remove(os.path.join(output_path,file))
     return pd.DataFrame()
 
 
@@ -244,14 +245,12 @@ def getTables(img_dir, output_path):
         # img = cv2.imread(img_path)
         img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), -1)
         result = table_engine(img)
-        save_structure_res(result, "./", "test")
-        if len(clean_output()) > 0:
-            df = clean_output()
-        # new_name = os.path.join(output_path, f'pdf.xlsx')
-
+        save_structure_res(result, "./", output_path)
+        df = clean_output(output_path)
+    for img in os.listdir(img_dir):
+        img_path = os.path.join(img_dir, img)
         # 文字识别
-        ocr = PaddleOCR(use_angle_cls=False,
-                        lang="ch")  # need to run only once to download and load model into memory
+        ocr = PaddleOCR(use_angle_cls=False,lang="ch")
         result = ocr.ocr(img_path, cls=False)
         res = result[0]  # 因为只有一张图片，所以结果只有1个，直接取出
         # 解析时间
@@ -271,18 +270,18 @@ def getTables(img_dir, output_path):
                     if sign_date and sign_date > result_time:
                         result_time = sign_date
                         print(result_time)
-        # 判断是否存在材料单价表
-        if len(df) != 0:
-            # 判断是否解析到时间
-            if result_time != datetime.strptime('1900-01-01', "%Y-%m-%d"):
-                print(result_time)
-                # 添加时间字段
-                df['签订时间'] = result_time
-            # 字段重命名,替换为数据库对应字段
-            df = df.rename(columns=field_contrast)
-            # 存放到对应输出文件夹
-            df.to_excel(os.path.join(output_path, f'pdf.xlsx'), index=False)
-            return df
+    # 判断是否存在材料单价表
+    if len(df) != 0:
+        # 判断是否解析到时间
+        if result_time != datetime.strptime('1900-01-01', "%Y-%m-%d"):
+            print(result_time)
+            # 添加时间字段
+            df['签订时间'] = result_time
+        # 字段重命名,替换为数据库对应字段
+        df = df.rename(columns=field_contrast)
+        # 存放到对应输出文件夹
+        df.to_excel(os.path.join(output_path, f'pdf.xlsx'), index=False)
+        return df
     return pd.DataFrame()
 
 
@@ -421,3 +420,21 @@ def mysql_select_df(sql):
 if __name__ == '__main__':
     # 项目
     pass
+    # path = input("请输入合同文件夹: ")
+    # for file1 in os.listdir(path):
+    #     path1 = os.path.join(path, file1)
+    #     project_name = re.findall("[^\d\s].*", file1)[0]
+    #     print(project_name)
+    #     # 合同类别
+    #     for file2 in os.listdir(path1):
+    #         path2 = os.path.join(path1, file2)
+    #         if os.path.isdir(path2):
+    #             # 合同文件
+    #             for file3 in os.listdir(path2):
+    #                 path3 = os.path.join(path2, file3)
+    #                 if not re.findall("分包|施工|检测|机械", path3) and '合同' in path3 and (
+    #                         path3.endswith(".pdf") or path3.endswith(".docx")):
+    #                     gci(project_name, path3)
+    #         elif (not re.findall("分包|施工|检测|机械", path2)) and '合同' in path2 and (
+    #                 path2.endswith(".pdf") or path2.endswith(".docx")):
+    #             gci(project_name, path2)
