@@ -1,3 +1,11 @@
+'''
+pip install pipreqs
+pipreqs . --encoding=utf8 --force
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+'''
+
+
+
 import datetime
 import hashlib
 import os
@@ -417,22 +425,22 @@ def mysql_select_df(sql):
 
 if __name__ == '__main__':
     # 项目
-    pass
-    # path = input("请输入合同文件夹: ")
-    # for file1 in os.listdir(path):
-    #     path1 = os.path.join(path, file1)
-    #     project_name = re.findall("[^\d\s].*", file1)[0]
-    #     print(project_name)
-    #     # 合同类别
-    #     for file2 in os.listdir(path1):
-    #         path2 = os.path.join(path1, file2)
-    #         if os.path.isdir(path2):
-    #             # 合同文件
-    #             for file3 in os.listdir(path2):
-    #                 path3 = os.path.join(path2, file3)
-    #                 if not re.findall("分包|施工|检测|机械", path3) and '合同' in path3 and (
-    #                         path3.endswith(".pdf") or path3.endswith(".docx")):
-    #                     gci(project_name, path3)
-    #         elif (not re.findall("分包|施工|检测|机械", path2)) and '合同' in path2 and (
-    #                 path2.endswith(".pdf") or path2.endswith(".docx")):
-    #             gci(project_name, path2)
+    # pass
+    path = input("请输入合同文件夹: ")
+    for file1 in os.listdir(path):
+        path1 = os.path.join(path, file1)
+        project_name = re.findall("[^\d\s].*", file1)[0]
+        print(project_name)
+        # 合同类别
+        for file2 in os.listdir(path1):
+            path2 = os.path.join(path1, file2)
+            if os.path.isdir(path2):
+                # 合同文件
+                for file3 in os.listdir(path2):
+                    path3 = os.path.join(path2, file3)
+                    if not re.findall("分包|施工|检测|机械", path3) and '合同' in path3 and (
+                            path3.endswith(".pdf") or path3.endswith(".docx")):
+                        gci(project_name, path3)
+            elif (not re.findall("分包|施工|检测|机械", path2)) and '合同' in path2 and (
+                    path2.endswith(".pdf") or path2.endswith(".docx")):
+                gci(project_name, path2)
