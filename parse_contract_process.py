@@ -1,24 +1,16 @@
-'''
-pip install pipreqs
-pipreqs . --encoding=utf8 --force
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
-'''
 import datetime
 import hashlib
-import os
 import re
 import shutil
 from datetime import datetime
-from threading import RLock
 
 import cv2
 import numpy as np
-import pandas as pd
-import pymysql
-from dbutils.persistent_db import PersistentDB
 from docx import Document
 from paddleocr import PaddleOCR, PPStructure, save_structure_res
 from pdf2image import convert_from_path
+
+from mysql_utils import *
 
 field_contrast = {"材料名称": "materialName",
                   "型号": "module",
@@ -53,6 +45,7 @@ def pyMuPDF_fitz(pdfPath, imagePath):
             os.makedirs(direng)
         image.save(f'{imagePath}/output_{i}.png', 'PNG')
 
+
 def clean_num(s):
     s = str(s)
     num = re.findall("\d*\.?\d{0,2}", s)
@@ -61,6 +54,7 @@ def clean_num(s):
         return num[0]
     return 0
 
+
 def gci(project_name, file):
     """
     传入项目名称和文件，根据文件后缀分流，进行处理
@@ -68,8 +62,8 @@ def gci(project_name, file):
     :param file:
     :return:
     """
-    # if file != r"合同\338 大英县旅游基础设施（一期）建设项目三标段\砂石运输\大英县旅游基础设施（一期）建设项目三标段砂石运输合同补充协议.pdf":
-    #     return ''
+    if file != r"合同\338 大英县旅游基础设施（一期）建设项目三标段\商混\大英县旅游基础设施一期建设项目三标段商品混凝土购销合同 162万元-信合源.docx":
+        return ''
     print('处理文件分割线'.center(100, '*'))
     print(file)
     file_path = file.replace("\\", "/")
@@ -142,7 +136,7 @@ def clean_output(output_path):
                     table = clean_data(table)
                     df = pd.DataFrame(data=table[1:], columns=table[0])
                     return df
-        os.remove(os.path.join(output_path,file))
+        os.remove(os.path.join(output_path, file))
     return pd.DataFrame()
 
 
@@ -155,48 +149,76 @@ def clean_data(table):
     name_index = []
     title = []
     # 匹配指定名称的表头，获取索引，并重设表头
-    for s in table[0]:
-        # 在匹配表头数据之前，替换掉换行和空格字符
-        deal_s = re.sub(",|\s", "", s)
-        # 匹配对应字段的位置，生成字段和字段索引两个列表
-        if re.findall('名称', deal_s) and '材料名称' not in title:
-            name_index.append(table[0].index(s))
-            title.append('材料名称')
-        elif re.findall("规格|型号", deal_s) and '型号' not in title:
-            name_index.append(table[0].index(s))
-            title.append('型号')
-        elif re.findall("单位", deal_s) and '单位' not in title:
-            name_index.append(table[0].index(s))
-            title.append('单位')
-        elif re.findall("数量", deal_s) and '数量' not in title:
-            name_index.append(table[0].index(s))
-            title.append('数量')
-        elif re.findall("单价",deal_s):
-            if re.findall("不含增值税价格|不含增值税", deal_s) and '不含增值税价格' not in title:
+    # 判断是否是商品混凝土，需要区分处理
+    if re.findall("强度等级|砼数量|基本单位",re.sub(",|\s", "","".join(table[0]))):
+        for s in table[0]:
+            # 在匹配表头数据之前，替换掉换行和空格字符
+            deal_s = re.sub(",|\s", "", s)
+            # 匹配对应字段的位置，生成字段和字段索引两个列表
+            if re.findall('强度等级', deal_s) and '型号' not in title:
                 name_index.append(table[0].index(s))
-                title.append('不含增值税价格')
-            elif re.findall("含增值税价格|含增值税", deal_s) and '含增值税价格' not in title:
+                title.append('型号')
+            elif re.findall("砼数量", deal_s) and '数量' not in title:
                 name_index.append(table[0].index(s))
-                title.append('含增值税价格')
-            elif re.findall("不含税价格|不含税", deal_s) and '不含税价格' not in title:
-                name_index.append(table[0].index(s))
-                title.append('不含税价格')
-            elif re.findall("含税价格|含税", deal_s) and '含税价格' not in title:
+                title.append('数量')
+            elif re.findall("基本单位", deal_s) and '含税价格' not in title:
                 name_index.append(table[0].index(s))
                 title.append('含税价格')
-    # 获取指定列数据
-    result_table = []
-    for row in table[1:]:
-        try:
-            # 判断合并表格，脏数据
-            if len(set(row)) == 1:
-                continue
-            # 生成行，并添加对应位置数据
+            elif re.findall("规格", deal_s) and '备注' not in title:
+                name_index.append(table[0].index(s))
+                title.append('备注')
+
+
+        # 获取指定列数据
+        result_table = []
+        for row in table[1:]:
             result_table.append([])
-            for idx in name_index:
+            for idx in name_index[:-1]:
                 result_table[-1].append(row[idx])
-        except Exception as e:
-            print(f"error:{e}，{row}")
+
+    else:
+        for s in table[0]:
+            # 在匹配表头数据之前，替换掉换行和空格字符
+            deal_s = re.sub(",|\s", "", s)
+            # 匹配对应字段的位置，生成字段和字段索引两个列表
+            if re.findall('名称', deal_s) and '材料名称' not in title:
+                name_index.append(table[0].index(s))
+                title.append('材料名称')
+            elif re.findall("规格|型号", deal_s) and '型号' not in title:
+                name_index.append(table[0].index(s))
+                title.append('型号')
+            elif re.findall("单位", deal_s) and '单位' not in title:
+                name_index.append(table[0].index(s))
+                title.append('单位')
+            elif re.findall("数量", deal_s) and '数量' not in title:
+                name_index.append(table[0].index(s))
+                title.append('数量')
+            elif re.findall("单价", deal_s):
+                if re.findall("不含增值税价格|不含增值税", deal_s) and '不含增值税价格' not in title:
+                    name_index.append(table[0].index(s))
+                    title.append('不含增值税价格')
+                elif re.findall("含增值税价格|含增值税", deal_s) and '含增值税价格' not in title:
+                    name_index.append(table[0].index(s))
+                    title.append('含增值税价格')
+                elif re.findall("不含税价格|不含税", deal_s) and '不含税价格' not in title:
+                    name_index.append(table[0].index(s))
+                    title.append('不含税价格')
+                elif re.findall("含税价格|含税|单价", deal_s) and '含税价格' not in title:
+                    name_index.append(table[0].index(s))
+                    title.append('含税价格')
+        # 获取指定列数据
+        result_table = []
+        for row in table[1:]:
+            try:
+                # 判断合并表格，脏数据
+                if len(set(row)) == 1:
+                    continue
+                # 生成行，并添加对应位置数据
+                result_table.append([])
+                for idx in name_index:
+                    result_table[-1].append(row[idx])
+            except Exception as e:
+                print(f"error:{e}，{row}")
     # 返回清洗以后的表格数据
     return [title] + result_table
 
@@ -250,7 +272,7 @@ def getTables(img_dir, output_path):
     for img in os.listdir(img_dir):
         img_path = os.path.join(img_dir, img)
         # 文字识别
-        ocr = PaddleOCR(use_angle_cls=False,lang="ch")
+        ocr = PaddleOCR(use_angle_cls=False, lang="ch")
         result = ocr.ocr(img_path, cls=False)
         res = result[0]  # 因为只有一张图片，所以结果只有1个，直接取出
         # 解析时间
@@ -330,111 +352,24 @@ def match_file(file_name):
                 print(file)
 
 
-def mysql_connect(config='mysql'):
-    """
-    连接数据库
-    """
-    db = pymysql.connect(
-        host='localhost',
-        port=3306,
-        user='root',
-        passwd='631314',
-        db='sf_data',
-        charset='utf8',
-    )
-    return db
-
-
-db = mysql_connect()
-
-
-def mysql_connect_pool(config='mysql'):
-    pool = PersistentDB(
-        pymysql,
-        5,
-        host='localhost',
-        port=3306,
-        user='root',
-        passwd='631314',
-        db='sf_data',
-        charset='utf8',
-        setsession=['SET AUTOCOMMIT = 1']
-    )
-
-    return pool
-
-
-pool = mysql_connect_pool()
-
-conn = pool.connection()
-
-LOCK = RLock()
-
-
-def mysql_insert_data(df, table):
-    """
-    使用df的表头和数据拼成批量更新的sql语句
-    """
-    sql = 'insert into {} ({}) values ({})'.format(table, ','.join(df.columns), ','.join(['%s'] * len(df.columns)))
-
-    values = df.values.tolist()
-    # 将NaT 替换成 ''
-    for i in range(len(values)):
-        for j in range(len(values[i])):
-            if pd.isnull(values[i][j]):
-                values[i][j] = None
-    with LOCK:
-        cursor = conn.cursor()
-        try:
-            cursor.executemany(sql, values)
-        except:
-            for value in values:
-                try:
-                    cursor.execute(sql, value)
-                except Exception as e:
-                    error = {'error': e, 'value': value[0], 'table': table}
-                    print(error)
-        db.commit()
-        cursor.close()
-
-
-def mysql_select_df(sql):
-    """
-    执行sql，返回的数据转换成dataframe，并且表头是列名
-    """
-    import pandas as pd
-    with LOCK:
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        data = cursor.fetchall()
-        cursor.close()
-    df = pd.DataFrame(data)
-    try:
-        df.columns = [i[0] for i in cursor.description]
-    except:
-        # 为空
-        pass
-    return df
-
-
 if __name__ == '__main__':
     # 项目
-    pass
-    # path = input("请输入合同文件夹: ")
-    # for file1 in os.listdir(path):
-    #     path1 = os.path.join(path, file1)
-    #     project_name = re.findall("[^\d\s].*", file1)[0]
-    #     print(project_name)
-    #     # 合同类别
-    #     for file2 in os.listdir(path1):
-    #         path2 = os.path.join(path1, file2)
-    #         if os.path.isdir(path2):
-    #             # 合同文件
-    #             for file3 in os.listdir(path2):
-    #                 path3 = os.path.join(path2, file3)
-    #                 if not re.findall("分包|施工|检测|机械", path3) and '合同' in path3 and (
-    #                         path3.endswith(".pdf") or path3.endswith(".docx")):
-    #                     gci(project_name, path3)
-    #         elif (not re.findall("分包|施工|检测|机械", path2)) and '合同' in path2 and (
-    #                 path2.endswith(".pdf") or path2.endswith(".docx")):
-    #             gci(project_name, path2)
+    # pass
+    path = input("请输入合同文件夹: ")
+    for file1 in os.listdir(path):
+        path1 = os.path.join(path, file1)
+        project_name = re.findall("[^\d\s].*", file1)[0]
+        print(project_name)
+        # 合同类别
+        for file2 in os.listdir(path1):
+            path2 = os.path.join(path1, file2)
+            if os.path.isdir(path2):
+                # 合同文件
+                for file3 in os.listdir(path2):
+                    path3 = os.path.join(path2, file3)
+                    if not re.findall("分包|施工|检测|机械", path3) and '合同' in path3 and (
+                            path3.endswith(".pdf") or path3.endswith(".docx")):
+                        gci(project_name, path3)
+            elif (not re.findall("分包|施工|检测|机械", path2)) and '合同' in path2 and (
+                    path2.endswith(".pdf") or path2.endswith(".docx")):
+                gci(project_name, path2)

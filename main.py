@@ -1,3 +1,19 @@
+"""
+python版本
+python 3.9.4
+
+打包纯净依赖
+pip install pipreqs
+pipreqs . --encoding=utf8 --force
+安装依赖
+pip install -r .\requirements.txt -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+
+
+"""
+
+
+
+
 import concurrent.futures
 from parse_contract_process import *
 from multiprocessing import Pool
@@ -35,9 +51,9 @@ if __name__ == "__main__":
 
     # 10m
     # 使用进程池加速处理
-    # with Pool() as pool:
-    #     # 提交任务，每个图像一个任务，传递两个参数
-    #     pool.starmap(gci, list(zip(project_list, file_list)))
+    with Pool() as pool:
+        # 提交任务，每个图像一个任务，传递两个参数
+        pool.starmap(gci, list(zip(project_list, file_list)))
 
 
     # # 创建线程
