@@ -41,13 +41,11 @@ if __name__ == "__main__":
                             path3.endswith(".pdf") or path3.endswith(".docx")):
                         file_list.append(path3)
                         project_list.append(project_name)
-                        # gci(project_name, path3)
 
             elif (not re.findall("分包|施工|检测|机械", path2)) and '合同' in path2 and (
                     path2.endswith(".pdf") or path2.endswith(".docx")):
                 file_list.append(path2)
                 project_list.append(project_name)
-                # gci(project_name, path2)
 
     # 10m
     # 使用进程池加速处理
