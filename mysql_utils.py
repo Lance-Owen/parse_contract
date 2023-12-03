@@ -5,6 +5,7 @@ from dbutils.persistent_db import PersistentDB
 import os
 from threading import RLock
 import copy
+from datetime import datetime
 
 MYSQL = 'mysql'
 test = False
@@ -18,7 +19,7 @@ def d_log_error(error):
     """
     打印错误日志
     """
-    with open('../error.log','a+',encoding='utf-8') as f:
+    with open('error.log','a+',encoding='utf-8') as f:
         for key,value in error.items():
             if key == 'error':
                 f.write(str(value))
@@ -37,12 +38,12 @@ def mysql_connect(config='mysql'):
     连接数据库
     """
     db = pymysql.connect(
-                        host=project_configs[config]['host'],
-                        port=int(project_configs[config]['port']),
-                        user=project_configs[config]['user'],
-                        passwd=project_configs[config]['password'],
-                        db=project_configs[config]['database'], 
-                        charset='utf8'
+        host='rm-2vc07dt7jw3vtt8x1uo.mysql.cn-chengdu.rds.aliyuncs.com',
+        port = 3306,
+        user = 'bidder_dev',
+        password = 'Bidder@2022!',
+        db = 'bigdata-com',
+        charset='utf8'
     )
     return db
 
@@ -52,11 +53,11 @@ def mysql_connect_pool(config='mysql'):
     pool = PersistentDB(
                     pymysql,
                     5,
-                    host=project_configs[config]['host'],
-                    port=int(project_configs[config]['port']),
-                    user=project_configs[config]['user'],
-                    passwd=project_configs[config]['password'],
-                    db=project_configs[config]['database'],
+                    host='rm-2vc07dt7jw3vtt8x1uo.mysql.cn-chengdu.rds.aliyuncs.com',
+                    port=3306,
+                    user='bidder_dev',
+                    password='Bidder@2022!',
+                    db='bigdata-com',
                     charset='utf8',
                     setsession=['SET AUTOCOMMIT = 1']
                     )
@@ -144,7 +145,7 @@ def mysql_insert_data(df,table):
     使用df的表头和数据拼成批量更新的sql语句
     """
     sql = 'insert into {} ({}) values ({})'.format(table,','.join(df.columns), ','.join(['%s'] * len(df.columns)))
-    
+    id_idx = df.columns.to_list().index('id')
     values = df.values.tolist()
     # 将NaT 替换成 ''
     for i in range(len(values)):
@@ -156,14 +157,46 @@ def mysql_insert_data(df,table):
         try:
             cursor.executemany(sql, values)
         except:
-            for value in values:
+            for i in range(len(values)):
                 if test:
-                    cursor.execute(sql, value) 
+                    cursor.execute(sql, values[i])
                 else:
                     try:
-                        cursor.execute(sql, value)
+                        select_id_df = mysql_select_df(f"select * from material where id = '{values[i][id_idx]}'")
+                        if len(select_id_df)>0:
+                            select_id_dict = select_id_df.iloc[0].to_dict()
+                            # 逻辑一：新数据签订时间不为空时，旧数据时间为空或者及数据时间不为空但新数据时间大于旧数据时间，执行新数据不为空的字段替换旧数据对应字段
+                            if (df.iloc[i]['signDate'] is not None and
+                                    (select_id_dict['signDate'] is None or df.iloc[i]['signDate'] >= select_id_dict[
+                                        'signDate'])):
+                                # 如果新数据时间戳较新，检查字段是否为空,新数据不空，替换
+                                for key, value in df.iloc[i].items():
+                                    # 跳过创建时间字段
+                                    if key == 'createTime':
+                                        continue
+                                    if value is not None:
+                                        select_id_dict[key] = value
+                                # 更新数据库中的数据
+                            # 逻辑二：其余情况为执行补充旧数据空白数据
+                            else:
+                                # 新数据不空，旧数据空，更新
+                                for key, value in df.iloc[i].items():
+                                    # 跳过创建时间字段
+                                    if key == 'createTime':
+                                        continue
+                                    if value is not None and select_id_dict[key] is None:
+                                        select_id_dict[key] = value
+
+                            select_id_dict['updateTime'] = datetime.now()
+                            id = select_id_dict.pop('id')
+                            partial_sql = ','.join([f"{key} = '{value}'" for key, value in select_id_dict.items()])
+                            sql = f"update {table} set {partial_sql} where id = '{id}'".replace("'None'",'Null')
+                            cursor.execute(sql)
+                            print("Data updated successfully.")
+                        else:
+                            cursor.execute(sql, value)
                     except Exception as e:
-                        error = {'error':e,'value':value[0],'table':table}
+                        error = {'error':e,'value':values[i],'table':table}
                         d_log_error(error)
         db.commit()
         cursor.close()
