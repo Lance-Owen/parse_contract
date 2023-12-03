@@ -3,8 +3,8 @@
 
 block_cipher = None
 a = Analysis(['..\\parse_contract.py'],
-pathex=['E:/code/parse_materials_file/venv/Lib/site-packages/paddle/include/paddle/phi/backends/dynload','E:/code/parse_materials_file/venv/Lib/site-packages/paddle/libs','E:/code/parse_materials_file/venv/Lib/site-packages/paddleocr','E:/code/parse_materials_file/venv/Lib/site-packages'],
-    binaries=[('E:/code/parse_materials_file/venv/Lib/site-packages/paddle','.'),('E:/code/parse_materials_file/venv/Lib/site-packages/paddle/libs','.'),('E:/code/parse_materials_file/venv/Lib/site-packages/paddleocr','.'),('E:/code/parse_materials_file/venv/Lib/site-packages/paddle/include/paddle/phi/backends/dynload','.'),('E:/code/parse_materials_file/venv/Lib/site-packages/paddleocr/ppocr','.')],
+pathex=['../venv/Lib/site-packages/paddle/include/paddle/phi/backends/dynload','../venv/Lib/site-packages/paddle/libs','../venv/Lib/site-packages/paddleocr','../venv/Lib/site-packages'],
+    binaries=[('../venv/Lib/site-packages/paddle','.'),('../venv/Lib/site-packages/paddle/libs','.'),('../venv/Lib/site-packages/paddleocr','.'),('../venv/Lib/site-packages/paddle/include/paddle/phi/backends/dynload','.'),('../venv/Lib/site-packages/paddleocr/ppocr','.')],
      datas=[],
      hiddenimports=[],
      hookspath=['.'],
