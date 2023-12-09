@@ -2,7 +2,7 @@
 
 
 block_cipher = None
-a = Analysis(['../main.py','..\\parse_contract_process.py','../mysql_utils.py'],
+a = Analysis(['..\\parse_contract.py'],
 pathex=['../venv/Lib/site-packages/paddle/include/paddle/phi/backends/dynload','../venv/Lib/site-packages/paddle/libs','../venv/Lib/site-packages/paddleocr','../venv/Lib/site-packages'],
     binaries=[('../venv/Lib/site-packages/paddle','.'),('../venv/Lib/site-packages/paddle/libs','.'),('../venv/Lib/site-packages/paddleocr','.'),('../venv/Lib/site-packages/paddle/include/paddle/phi/backends/dynload','.'),('../venv/Lib/site-packages/paddleocr/ppocr','.')],
      datas=[],
