@@ -1,65 +1,46 @@
-s = "北川青片乡西纳村至正河村公路工程北川县青片乡"
-import cpca
-df = cpca.transform([s])
-print(df)
+# 文件归档处理
+from parse_utils import *
+import re
+from mysql_utils import *
 
-# import cv2
-# import numpy as np
-# img_path = 'E:\code\parse_contract\imgs\金牛区曹家巷驷马桥社区卫生服务中心装修改造设备提升工程\2 汇旺-凯月欣 驷马桥项目-空调采购合同 1486224\9.jpg'
-# img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), -1)
-# # 灰度化
-# image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-# # 二值化
-# _, image = cv2.threshold(image, 0, 255, cv2.THRESH_OTSU)
-# cv2.imwrite(img_path, image)
+df1 = pd.read_excel(r"C:\Users\pc\Desktop\建筑工程文档归档.xlsx")
+df1['工程类型'] = 1
+df2 = pd.read_excel(r"C:\Users\pc\Desktop\道路工程文档归档.xlsx")
+df2['工程类型'] = 2
+df3 = pd.read_excel(r"C:\Users\pc\Desktop\桥梁工程文档归档.xlsx")
+df3['工程类型'] = 3
+df4 = pd.read_excel(r"C:\Users\pc\Desktop\地下管线工程文档归档.xlsx")
+df4['工程类型'] = 4
 
+field_contrast = {"一级分类": "first_heading",
+                  "二级分类": "second_heading",
+                  "建设单位": "construction_unit",
+                  "设计单位": "design_unit",
+                  "施工单位": "build_unit",
+                  "监理单位": "supervision_unit",
+                  "城建党建馆": "city_party_building",
+                  "工程类型": "project_type"
+                  }
 
+def deal_data(df):
+    data = df.values.tolist()
+    for i in range(len(data)):
+        if re.findall('[A-Za-z]', str(data[i][0])):
+            text = data[i][1]
+            continue
+        data[i][0] = text
 
-import sqlite3
+    data_df = pd.DataFrame(data=data, columns=df.columns.tolist())
+    data_df['二级分类'] = data_df['二级分类'].fillna('')
+    data_df = data_df.fillna(0)
+    print(len(data_df))
+    data_df = data_df[~data_df['一级分类'].astype(str).str.contains(regex=True, pat='[A-Z]+\d+')]
+    print(len(data_df))
+    data_df['id'] = data_df.apply(lambda row:generate_md5(row['一级分类']+row['二级分类']+str(row['工程类型'])),axis=1)
+    data_df = data_df.rename(columns=field_contrast)
+    mysql_insert_data(data_df,'file_archiving_rules')
 
-def update_data(conn, new_data):
-    cursor = conn.cursor()
-
-    # 查询数据库中是否存在相同 ID 的数据
-    cursor.execute("SELECT * FROM your_table WHERE id=?", (new_data['id'],))
-    existing_data = cursor.fetchone()
-
-    if existing_data:
-        # 如果存在相同 ID 的数据，比较时间戳
-        if (new_data['timestamp'] is not None and
-                (existing_data['timestamp'] is None or new_data['timestamp'] > existing_data['timestamp'])):
-            # 如果新数据时间戳较新，检查字段是否为空
-            for key, value in new_data.items():
-                if value is not None:
-                    existing_data[key] = value
-            # 更新数据库中的数据
-            cursor.execute("UPDATE your_table SET timestamp=?, field1=?, field2=?, ... WHERE id=?",
-                           (existing_data['timestamp'], existing_data['field1'], existing_data['field2'], ..., existing_data['id']))
-            conn.commit()
-            print("Data updated successfully.")
-        else:
-            print("Existing data is newer or has a valid timestamp. No update needed.")
-    else:
-        # 如果不存在相同 ID 的数据，插入新数据
-        cursor.execute("INSERT INTO your_table (id, timestamp, field1, field2, ...) VALUES (?, ?, ?, ?, ...)",
-                       (new_data['id'], new_data['timestamp'], new_data['field1'], new_data['field2'], ...))
-        conn.commit()
-        print("New data inserted successfully.")
-
-# 示例新数据，注意 timestamp 可能为 None
-new_data = {
-    'id': 1,
-    'timestamp': None,
-    'field1': 'new_value1',
-    'field2': None,  # Assume this is the field that can be None
-    # Add other fields as needed
-}
-
-# 连接到数据库
-conn = sqlite3.connect('your_database.db')
-
-# 调用更新函数
-update_data(conn, new_data)
-
-# 关闭数据库连接
-conn.close()
+deal_data(df1)
+deal_data(df2)
+deal_data(df3)
+deal_data(df4)

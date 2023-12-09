@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 python版本
 python 3.9.4
@@ -17,6 +18,7 @@ import os
 
 
 
+
 def list_files_in_directory_recursive(directory):
     file_list = []
     for root, dirs, files in os.walk(directory):
@@ -28,7 +30,7 @@ def list_files_in_directory_recursive(directory):
 if __name__ == "__main__":
     # path = input("请输入合同文件夹: ")
     # 获取所有图像文件的路径
-    path = r'\\192.168.180.180\13.平台-财务\平台公司共享\1.汇旺物资\合同扫描件\01安徽'
+    path = r'\\192.168.180.180\13.平台-财务\平台公司共享'
     file_list = list_files_in_directory_recursive(path)
     process_file_list = []
     process_project_list = []
@@ -57,13 +59,13 @@ if __name__ == "__main__":
             else:
                 # print(f"判断文件：{file}")
                 pass
-    for project_name,file in zip(process_project_list,process_file_list):
-        gci(project_name,file)
+    # for project_name,file in zip(process_project_list,process_file_list):
+    #     gci(project_name,file)
     # # 10m
     # 使用进程池加速处理
-    # with Pool() as pool:
-    #     # 提交任务，每个图像一个任务，传递两个参数
-    #     pool.starmap(gci, list(zip(process_project_list, process_file_list)))
+    with Pool() as pool:
+        # 提交任务，每个图像一个任务，传递两个参数
+        pool.starmap(gci, list(zip(process_project_list, process_file_list)))
 
 
 

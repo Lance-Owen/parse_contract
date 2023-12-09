@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import csv
 import datetime
 import hashlib
@@ -10,7 +11,6 @@ import cv2
 import numpy as np
 from docx import Document
 from paddleocr import PaddleOCR, PPStructure, save_structure_res
-# from paddleocr.ppstructure.predict_system import save_structure_res
 from mysql_utils import *
 
 # 数据库字段中英文对照字典
@@ -369,7 +369,7 @@ def gci(project_name, file):
     :param file:
     :return:
     """
-    # if file != r"\\192.168.180.180\13.平台-财务\平台公司共享\1.汇旺物资\合同扫描件\01安徽\10 2021年中央财政湿地保护资金项目-栖息地改造工程\板材-明鑫\10-11 汇旺-明鑫木业 栖息地项目-板材补充审批表+补充协议 180340元.pdf":
+    # if file != r"\\192.168.180.180\13.平台-财务\平台公司共享\1.汇旺物资\合同扫描件\01安徽\6 定远县城发新材料科技项目土建部分\商混-昆仑\6-5 汇旺-昆仑 定远-商品混凝土采购合同补充协议三 67420元.pdf":
     #     return ''
     print('处理文件分割线'.center(100, '*'))
     print(file)
@@ -426,15 +426,20 @@ def gci(project_name, file):
         elif 'materialName' in df.columns.tolist():
             name_or_module = 'materialName'
         try:
-            df['id'] = df.apply(lambda row: generate_md5(project_name + row['materialName'] + row['module']), axis=1)
+            df['materialName'] = df['materialName'].astype(str)
+            df['module'] = df['module'].astype(str)
+
+            df['id'] = df.apply(lambda row: generate_md5(project_name + str(row['materialName']) + str(row['module'])), axis=1)
         except Exception as e:
             print(f"error:容差性错误,不存在规格字段{e}")
-            df['id'] = df.apply(lambda row: generate_md5(project_name + row[name_or_module]), axis=1)
+            df[name_or_module] = df[name_or_module].astype(str)
+
+            df['id'] = df.apply(lambda row: generate_md5(project_name + str(row[name_or_module])), axis=1)
         for col in df.columns:
             if col in ['number', 'taxPrice', 'noTaxPrice', 'addTaxPrice', 'noAddTaxPrice']:
                 df[col] = df[col].apply(lambda cell: clean_num(cell))
         print(df)
-        mysql_insert_data(df, 'material')
+        mysql_insert_content_data(df, 'material')
         print('文件有材料数据，已写入数据库！')
         write_data_to_csv(('file_log.csv', file, datetime.now(), '文件有材料数据，已写入数据库！'))
     else:

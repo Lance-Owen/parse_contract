@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pymysql
 import configparser
 import pandas as pd
@@ -140,7 +141,7 @@ def mysql_delete_win_by_ids(ids,table_name,table):
         db.commit()
         cursor.close()
 
-def mysql_insert_data(df,table):
+def mysql_insert_content_data(df,table):
     """
     使用df的表头和数据拼成批量更新的sql语句
     """
@@ -200,6 +201,37 @@ def mysql_insert_data(df,table):
                         d_log_error(error)
         db.commit()
         cursor.close()
+
+
+def mysql_insert_data(df, table):
+    """
+    使用df的表头和数据拼成批量更新的sql语句
+    """
+    sql = 'insert into {} ({}) values ({})'.format(table, ','.join(df.columns), ','.join(['%s'] * len(df.columns)))
+
+    values = df.values.tolist()
+    # 将NaT 替换成 ''
+    for i in range(len(values)):
+        for j in range(len(values[i])):
+            if pd.isnull(values[i][j]):
+                values[i][j] = None
+    with LOCK:
+        cursor = conn.cursor()
+        try:
+            cursor.executemany(sql, values)
+        except:
+            for value in values:
+                if test:
+                    cursor.execute(sql, value)
+                else:
+                    try:
+                        cursor.execute(sql, value)
+                    except Exception as e:
+                        error = {'error': e, 'value': value[0], 'table': table}
+                        d_log_error(error)
+        db.commit()
+        cursor.close()
+
 
 def mysql_delete_data_by_ids(ids,table):
     """
